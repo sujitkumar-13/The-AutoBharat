@@ -1,5 +1,4 @@
 import { useRef, useState, useCallback } from "react";
-import { motion } from "framer-motion";
 
 export function InteractiveFooter() {
   const footerRef = useRef<HTMLElement>(null);
