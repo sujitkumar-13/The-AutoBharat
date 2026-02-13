@@ -95,13 +95,21 @@ function PostEditor({ postId, onSave }: { postId?: string; onSave: () => void })
       published_at: finalStatus === "published" ? new Date().toISOString() : null,
     };
 
+    let error;
     if (postId) {
-      await supabase.from("posts").update(postData).eq("id", postId);
+      ({ error } = await supabase.from("posts").update(postData).eq("id", postId));
     } else {
-      await supabase.from("posts").insert(postData);
+      ({ error } = await supabase.from("posts").insert(postData));
     }
+
     setSaving(false);
-    onSave();
+
+    if (error) {
+      alert("Error saving post: " + error.message);
+      console.error("Save error:", error);
+    } else {
+      onSave();
+    }
   };
 
   return (
@@ -218,12 +226,19 @@ function PostEditor({ postId, onSave }: { postId?: string; onSave: () => void })
 // Posts List
 function PostsList() {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   const fetchPosts = async () => {
-    const { data } = await supabase.from("posts").select("*").order("created_at", { ascending: false });
+    setLoading(true);
+    const { data, error } = await supabase.from("posts").select("*").order("created_at", { ascending: false });
+    if (error) {
+      console.error("Fetch posts error:", error);
+      alert("Error fetching posts: " + error.message);
+    }
     if (data) setPosts(data as Post[]);
+    setLoading(false);
   };
 
   useEffect(() => { fetchPosts(); }, []);
@@ -255,30 +270,40 @@ function PostsList() {
       </div>
 
       <div className="space-y-3">
-        {posts.map((post) => (
-          <div key={post.id} className="flex items-center justify-between px-6 py-4 border border-border bg-card hover:border-accent/30 transition-colors">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3">
-                <h3 className="text-display text-sm truncate">{post.title}</h3>
-                <span className={`text-display text-[10px] tracking-widest px-2 py-0.5 border ${post.status === "published" ? "border-accent text-accent" : "border-border text-muted-foreground"}`}>
-                  {post.status}
-                </span>
-                {post.hinglish_content && (
-                  <span className="text-display text-[10px] tracking-widest px-2 py-0.5 border border-border text-muted-foreground">
-                    HI
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">{new Date(post.created_at).toLocaleDateString()}</p>
-            </div>
-            <div className="flex gap-2 ml-4">
-              <button onClick={() => setEditingId(post.id)} className="p-2 hover:text-accent transition-colors"><Pencil className="w-4 h-4" /></button>
-              <button onClick={() => handleDelete(post.id)} className="p-2 hover:text-accent transition-colors"><Trash2 className="w-4 h-4" /></button>
-            </div>
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-20 border border-border bg-card animate-pulse" />
+            ))}
           </div>
-        ))}
-        {posts.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground text-sm">No posts yet. Create your first post.</div>
+        ) : (
+          <>
+            {posts.map((post) => (
+              <div key={post.id} className="flex items-center justify-between px-6 py-4 border border-border bg-card hover:border-accent/30 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-display text-sm truncate">{post.title}</h3>
+                    <span className={`text-display text-[10px] tracking-widest px-2 py-0.5 border ${post.status === "published" ? "border-accent text-accent" : "border-border text-muted-foreground"}`}>
+                      {post.status}
+                    </span>
+                    {post.hinglish_content && (
+                      <span className="text-display text-[10px] tracking-widest px-2 py-0.5 border border-border text-muted-foreground">
+                        HI
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(post.created_at).toLocaleDateString()}</p>
+                </div>
+                <div className="flex gap-2 ml-4">
+                  <button onClick={() => setEditingId(post.id)} className="p-2 hover:text-accent transition-colors"><Pencil className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(post.id)} className="p-2 hover:text-accent transition-colors"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              </div>
+            ))}
+            {posts.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground text-sm">No posts yet. Create your first post.</div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -344,8 +369,21 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <div className="text-display text-sm tracking-widest text-muted-foreground">Loading...</div>
+      <main className="min-h-screen flex">
+        <aside className="w-56 border-r border-border min-h-screen p-6 hidden md:block">
+          <div className="space-y-4">
+            <div className="h-4 bg-muted animate-pulse w-3/4" />
+            <div className="h-4 bg-muted animate-pulse w-1/2" />
+          </div>
+        </aside>
+        <div className="flex-1 p-8">
+          <div className="h-8 bg-muted animate-pulse w-48 mb-8" />
+          <div className="space-y-4">
+            <div className="h-20 bg-muted animate-pulse w-full border border-border" />
+            <div className="h-20 bg-muted animate-pulse w-full border border-border" />
+            <div className="h-20 bg-muted animate-pulse w-full border border-border" />
+          </div>
+        </div>
       </main>
     );
   }

@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   loading: true,
   signIn: async () => ({ error: null }),
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,11 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAdminRole(session.user.id);
+        await checkAdminRole(session.user.id);
       }
       setLoading(false);
     });
